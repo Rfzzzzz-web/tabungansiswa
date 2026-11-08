@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SiTabung — Aplikasi Tabungan Siswa (User-Centric Cloud)</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome 6 CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- SweetAlert2 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Google Identity Services (OAuth 2.0) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    /* ==========================================================================
+       NEUMORPHISM DESIGN SYSTEM (SOFT UI)
+       ========================================================================== */
+    :root {
+      --bg-main: #e6eef8;
+      --bg-surface: #e6eef8;
+      --text-primary: #2b3648;
+      --text-secondary: #64748b;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #6366f1;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+
+      /* Neumorphic Shadows */
+      --shadow-out: 8px 8px 16px #c5cfdc, -8px -8px 16px #ffffff;
+      --shadow-out-sm: 4px 4px 8px #c5cfdc, -4px -4px 8px #ffffff;
+      --shadow-in: inset 5px 5px 10px #c5cfdc, inset -5px -5px 10px #ffffff;
+      --radius-lg: 22px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding-bottom: 50px;
+    }
+
+    /* Neumorphic Utility Classes */
+    .neu-card {
+      background: var(--bg-surface);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-out);
+      padding: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+    }
+
+    .neu-inset {
+      background: var(--bg-surface);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-in);
+      border: none;
+    }
+
+    .neu-btn {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: var(--radius-md);
+      padding: 12px 20px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      cursor: pointer;
+      box-shadow: var(--shadow-out-sm);
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .neu-btn:hover {
+      transform: translateY(-2px);
+      color: var(--accent-primary);
+    }
+
+    .neu-btn:active {
+      box-shadow: var(--shadow-in);
+      transform: translateY(0);
+    }
+
+    .neu-btn.primary {
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      color: #ffffff;
+      border: none;
+    }
+    .neu-btn.primary:hover {
+      color: #ffffff;
+      filter: brightness(1.06);
+    }
+
+    .neu-btn.success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      border: none;
+    }
+
+    .neu-btn.danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: #ffffff;
+      border: none;
+    }
+
+    .neu-input, .neu-select {
+      width: 100%;
+      padding: 13px 16px;
+      background: var(--bg-surface);
+      border: none;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-in);
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      font-weight: 500;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .neu-input:focus, .neu-select:focus {
+      box-shadow: inset 6px 6px 12px #bcc7d6, inset -6px -6px 12px #ffffff, 0 0 0 2px rgba(59, 130, 246, 0.35);
+    }
+
+    /* Layout Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 18px;
+    }
+
+    /* Login Screen */
+    #login-screen {
+      min-height: 92vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login-box {
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      padding: 42px 32px;
+    }
+
+    .brand-logo {
+      width: 84px;
+      height: 84px;
+      margin: 0 auto 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      color: var(--accent-primary);
+      box-shadow: var(--shadow-out);
+    }
+
+    .feature-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin: 22px 0 30px;
+    }
+
+    .pill {
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      box-shadow: var(--shadow-out-sm);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Topbar Header */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .brand-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: var(--accent-primary);
+      box-shadow: var(--shadow-out-sm);
+    }
+
+    .user-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      box-shadow: var(--shadow-in);
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .user-badge img {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+    }
+
+    /* Stat Cards Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .stat-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      box-shadow: var(--shadow-in);
+      flex-shrink: 0;
+    }
+
+    .stat-info h4 {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .stat-info p {
+      font-size: 1.35rem;
+      font-weight: 800;
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 26px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      flex: 1;
+      min-width: 170px;
+      padding: 15px 20px;
+    }
+
+    .tab-btn.active {
+      box-shadow: var(--shadow-in);
+      color: var(--accent-primary);
+    }
+
+    /* Main Content Grid */
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 920px) {
+      .grid-2col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.86rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+    }
+
+    /* Table Styling */
+    .table-responsive {
+      overflow-x: auto;
+      border-radius: var(--radius-md);
+      padding: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 10px;
+    }
+
+    th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      background: var(--bg-surface);
+      padding: 14px 16px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      box-shadow: var(--shadow-out-sm);
+    }
+
+    tr td:first-child {
+      border-top-left-radius: 12px;
+      border-bottom-left-radius: 12px;
+    }
+
+    tr td:last-child {
+      border-top-right-radius: 12px;
+      border-bottom-right-radius: 12px;
+    }
+
+    .badge {
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      display: inline-block;
+    }
+
+    .badge-setor {
+      background: rgba(16, 185, 129, 0.15);
+      color: #059669;
+    }
+
+    .badge-tarik {
+      background: rgba(239, 68, 68, 0.15);
+      color: #dc2626;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Print Area Styling */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #print-area, #print-area * {
+        visibility: visible;
+      }
+      #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: #fff;
+        color: #000;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       1. HALAMAN LOGIN (GOOGLE IDENTITY SERVICES)
+       ======================================================================== -->
+  <section id="login-screen">
+    <div class="neu-card login-box">
+      <div class="brand-logo">
+        <i class="fa-solid fa-piggy-bank"></i>
+      </div>
+      <h1 style="font-size: 1.65rem; font-weight: 800; margin-bottom: 8px;">SiTabung Siswa</h1>
+      <p style="color: var(--text-secondary); font-size: 0.94rem; line-height: 1.6;">
+        Aplikasi Manajemen Tabungan Siswa Modern untuk Guru Kelas. Data tersimpan <strong>100% aman di Google Drive pribadi Anda</strong>.
+      </p>
+
+      <div class="feature-pills">
+        <span class="pill"><i class="fa-brands fa-google-drive"></i> Drive Sendiri</span>
+        <span class="pill"><i class="fa-solid fa-table"></i> Auto Spreadsheet</span>
+        <span class="pill"><i class="fa-solid fa-print"></i> Cetak Bukti</span>
+      </div>
+
+      <button id="btn-google-login" class="neu-btn primary" style="width: 100%; padding: 15px; font-size: 1rem;" onclick="handleGoogleLogin()">
+        <i class="fa-brands fa-google"></i> Login dengan Akun Google Guru
+      </button>
+
+      <div style="margin-top: 22px; font-size: 0.78rem; color: var(--text-secondary);">
+        <i class="fa-solid fa-shield-halved"></i> Privasi Terjamin: Sistem hanya mengakses file database yang dibuat oleh aplikasi ini.
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       2. DASHBOARD UTAMA APLIKASI
+       ======================================================================== -->
+  <main id="app-screen" class="container hidden">
+    <!-- Header Topbar -->
+    <header class="topbar neu-card">
+      <div class="brand-header">
+        <div class="brand-icon">
+          <i class="fa-solid fa-vault"></i>
+        </div>
+        <div>
+          <h2 style="font-size: 1.3rem; font-weight: 800;">SiTabung Guru Kelas</h2>
+          <p style="font-size: 0.82rem; color: var(--text-secondary);">
+            Database Terhubung ke Google Drive Anda
+          </p>
+        </div>
+      </div>
+
+      <div class="user-actions">
+        <div class="user-badge" id="user-profile-badge">
+          <i class="fa-solid fa-user-check" style="color: var(--success);"></i>
+          <span id="user-email-label">Guru Kelas</span>
+        </div>
+        <a id="btn-open-sheet" href="#" target="_blank" class="neu-btn" title="Buka File Spreadsheet di Drive Anda">
+          <i class="fa-solid fa-file-excel" style="color: var(--success);"></i> Buka Database Sheet
+        </a>
+        <button class="neu-btn" onclick="syncDatabase(true)" title="Muat Ulang Data">
+          <i class="fa-solid fa-arrows-rotate"></i>
+        </button>
+        <button class="neu-btn danger" onclick="handleLogout()" title="Keluar">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Kartu Rekap Saldo Global -->
+    <section class="stats-grid">
+      <div class="neu-card stat-card">
+        <div class="stat-icon" style="color: var(--accent-primary);">
+          <i class="fa-solid fa-wallet"></i>
+        </div>
+        <div class="stat-info">
+          <h4>Total Saldo Kelas</h4>
+          <p id="stat-total-saldo">Rp 0</p>
+        </div>
+      </div>
+
+      <div class="neu-card stat-card">
+        <div class="stat-icon" style="color: var(--success);">
+          <i class="fa-solid fa-arrow-trend-up"></i>
+        </div>
+        <div class="stat-info">
+          <h4>Total Setoran Masuk</h4>
+          <p id="stat-total-setor">Rp 0</p>
+        </div>
+      </div>
+
+      <div class="neu-card stat-card">
+        <div class="stat-icon" style="color: var(--danger);">
+          <i class="fa-solid fa-arrow-trend-down"></i>
+        </div>
+        <div class="stat-info">
+          <h4>Total Penarikan</h4>
+          <p id="stat-total-tarik">Rp 0</p>
+        </div>
+      </div>
+
+      <div class="neu-card stat-card">
+        <div class="stat-icon" style="color: var(--warning);">
+          <i class="fa-solid fa-users"></i>
+        </div>
+        <div class="stat-info">
+          <h4>Jumlah Siswa Aktif</h4>
+          <p id="stat-total-siswa">0 Siswa</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Menu Navigasi Tab -->
+    <nav class="nav-tabs">
+      <button class="neu-btn tab-btn active" onclick="switchTab('tab-transaksi', this)">
+        <i class="fa-solid fa-money-bill-transfer"></i> Input Setor / Tarik
+      </button>
+      <button class="neu-btn tab-btn" onclick="switchTab('tab-rekap-anak', this)">
+        <i class="fa-solid fa-children"></i> Rekap Saldo Per Anak
+      </button>
+      <button class="neu-btn tab-btn" onclick="switchTab('tab-siswa', this)">
+        <i class="fa-solid fa-user-plus"></i> Kelola Data Siswa
+      </button>
+    </nav>
+
+    <!-- ======================================================================
+         TAB 1: INPUT SETORAN / PENARIKAN & RIWAYAT TRANSAKSI
+         ====================================================================== -->
+    <section id="tab-transaksi" class="tab-pane">
+      <div class="grid-2col">
+        <!-- Form Input Transaksi -->
+        <div class="neu-card">
+          <h3 style="margin-bottom: 18px; font-size: 1.1rem;">
+            <i class="fa-solid fa-cash-register" style="color: var(--accent-primary);"></i> Form Transaksi Tabungan
+          </h3>
+
+          <form id="form-transaksi" onsubmit="submitTransaksi(event)">
+            <div class="form-group">
+              <label>Pilih Siswa</label>
+              <select id="trx-siswa" class="neu-select" required onchange="updateSelectedSiswaSaldoInfo()">
+                <option value="">-- Pilih Nama Siswa --</option>
+              </select>
+              <div id="info-saldo-siswa" style="margin-top: 8px; font-size: 0.82rem; color: var(--accent-primary); font-weight: 700;"></div>
+            </div>
+
+            <div class="form-group">
+              <label>Jenis Transaksi</label>
+              <select id="trx-jenis" class="neu-select" required>
+                <option value="SETOR">➕ SETORAN TABUNGAN (Uang Masuk)</option>
+                <option value="TARIK">➖ PENARIKAN TABUNGAN (Uang Keluar)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Nominal (Rp)</label>
+              <input type="number" id="trx-nominal" class="neu-input" placeholder="Contoh: 10000" min="500" step="500" required />
+            </div>
+
+            <div class="form-group">
+              <label>Tanggal Transaksi</label>
+              <input type="date" id="trx-tanggal" class="neu-input" required />
+            </div>
+
+            <div class="form-group">
+              <label>Catatan / Keterangan</label>
+              <input type="text" id="trx-keterangan" class="neu-input" placeholder="Opsional: Tabungan rutin / Ambil uang buku" />
+            </div>
+
+            <button type="submit" class="neu-btn primary" style="width: 100%; margin-top: 8px;">
+              <i class="fa-solid fa-floppy-disk"></i> Simpan Transaksi & Cetak Struk
+            </button>
+          </form>
+        </div>
+
+        <!-- Tabel Riwayat Transaksi Terakhir -->
+        <div class="neu-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+            <h3 style="font-size: 1.1rem;">
+              <i class="fa-solid fa-clock-rotate-left" style="color: var(--accent-primary);"></i> Riwayat Transaksi
+            </h3>
+            <input type="text" id="search-trx" class="neu-input" style="max-width: 240px; padding: 9px 14px;" placeholder="Cari nama / ID..." oninput="renderTransaksiTable()" />
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tanggal</th>
+                  <th>Siswa</th>
+                  <th>Jenis</th>
+                  <th>Nominal</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-transaksi">
+                <tr><td colspan="5" style="text-align: center;">Memuat data...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         TAB 2: REKAP SALDO PER ANAK & CETAK MUTASI BUKU TABUNGAN
+         ====================================================================== -->
+    <section id="tab-rekap-anak" class="tab-pane hidden">
+      <div class="neu-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h3 style="font-size: 1.15rem;">
+              <i class="fa-solid fa-chart-pie" style="color: var(--accent-primary);"></i> Rekapitulasi Saldo Per Siswa
+            </h3>
+            <p style="font-size: 0.83rem; color: var(--text-secondary);">
+              Klik tombol <strong>Detail & Cetak</strong> untuk melihat rincian mutasi atau mencetak buku tabungan per anak.
+            </p>
+          </div>
+          <input type="text" id="search-rekap" class="neu-input" style="max-width: 280px;" placeholder="🔍 Cari nama siswa / NIS..." oninput="renderRekapAnakTable()" />
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>NIS</th>
+                <th>Nama Siswa</th>
+                <th>Kelas</th>
+                <th>Total Setor</th>
+                <th>Total Tarik</th>
+                <th>Saldo Akhir</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-rekap-anak">
+              <tr><td colspan="7" style="text-align: center;">Memuat data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         TAB 3: KELOLA DATA SISWA (TAMBAH SISWA)
+         ====================================================================== -->
+    <section id="tab-siswa" class="tab-pane hidden">
+      <div class="grid-2col">
+        <div class="neu-card">
+          <h3 style="margin-bottom: 18px; font-size: 1.1rem;">
+            <i class="fa-solid fa-user-plus" style="color: var(--accent-primary);"></i> Tambah Siswa Baru
+          </h3>
+          <form id="form-siswa" onsubmit="submitSiswaBaru(event)">
+            <div class="form-group">
+              <label>Nomor Induk Siswa (NIS)</label>
+              <input type="text" id="siswa-nis" class="neu-input" placeholder="Contoh: 2026001" required />
+            </div>
+            <div class="form-group">
+              <label>Nama Lengkap Siswa</label>
+              <input type="text" id="siswa-nama" class="neu-input" placeholder="Contoh: Budi Santoso" required />
+            </div>
+            <div class="form-group">
+              <label>Kelas</label>
+              <input type="text" id="siswa-kelas" class="neu-input" placeholder="Contoh: Kelas 4A" required />
+            </div>
+            <button type="submit" class="neu-btn success" style="width: 100%;">
+              <i class="fa-solid fa-check"></i> Tambahkan Siswa ke Database
+            </button>
+          </form>
+        </div>
+
+        <div class="neu-card">
+          <h3 style="margin-bottom: 16px; font-size: 1.1rem;">
+            <i class="fa-solid fa-address-book" style="color: var(--accent-primary);"></i> Daftar Siswa Terdaftar
+          </h3>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID Unik</th>
+                  <th>NIS</th>
+                  <th>Nama Siswa</th>
+                  <th>Kelas</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-daftar-siswa">
+                <tr><td colspan="4" style="text-align: center;">Memuat data...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Area Cetak Struk / Rekap (Hanya Tampil Saat Print) -->
+  <div id="print-area" class="hidden"></div>
+
+  <!-- ========================================================================
+       JAVASCRIPT LOGIC (OAUTH2, API INTEGRATION, PRINT ENGINE)
+       ======================================================================== -->
+  <script>
+    /**
+     * KONFIGURASI PENTING (WAJIB DIGANTI SESUAI PANDUAN DI BAWAH)
+     */
+    const CONFIG = {
+      // 1. Ganti dengan OAuth 2.0 Client ID dari Google Cloud Console
+      GOOGLE_CLIENT_ID: "829813587866-ihk11kcuiuvl0tt92232kd390u9rlvjm.apps.googleusercontent.com",
+
+      // 2. Ganti dengan URL Web App dari Deployment Google Apps Script (berakhiran /exec)
+      GAS_WEB_APP_URL: "https://script.google.com/macros/s/AKfycbyGl-wRyO7qeYcMJ240RWhsWXlQX3uHWDAsq-_Cdwx2xvBy_ErA28r7r74iQub6qBA/exec",
+
+      // Scope untuk membuat & mengelola file database di Google Drive milik user yang login
+      SCOPES: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets openid email profile"
+    };
+
+    // State Aplikasi
+    let tokenClient;
+    let APP_STATE = {
+      accessToken: sessionStorage.getItem("sitabung_token") || null,
+      spreadsheetId: sessionStorage.getItem("sitabung_sheet_id") || null,
+      userProfile: JSON.parse(sessionStorage.getItem("sitabung_profile") || "null"),
+      rekapGlobal: {},
+      siswaList: [],
+      transaksiList: []
+    };
+
+    // Set default tanggal hari ini
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("trx-tanggal").valueAsDate = new Date();
+
+      // Cek apakah masih ada sesi login aktif
+      if (APP_STATE.accessToken) {
+        showDashboardUI();
+        syncDatabase(false);
+      }
+    });
+
+    /**
+     * Inisialisasi Google Identity Services (GIS) & Proses Login
+     */
+    function handleGoogleLogin() {
+      if (CONFIG.GOOGLE_CLIENT_ID.includes("GANTI_DENGAN")) {
+        Swal.fire({
+          icon: "warning",
+          title: "Konfigurasi Belum Diisi",
+          html: "Silakan masukkan <b>GOOGLE_CLIENT_ID</b> dan <b>GAS_WEB_APP_URL</b> pada bagian <code>CONFIG</code> di dalam file <code>index.html</code>."
+        });
+        return;
+      }
+
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CONFIG.GOOGLE_CLIENT_ID,
+        scope: CONFIG.SCOPES,
+        callback: async (tokenResponse) => {
+          if (tokenResponse && tokenResponse.access_token) {
+            APP_STATE.accessToken = tokenResponse.access_token;
+            sessionStorage.setItem("sitabung_token", tokenResponse.access_token);
+
+            await fetchUserProfile(tokenResponse.access_token);
+            showDashboardUI();
+            await syncDatabase(true);
+          }
+        }
+      });
+
+      tokenClient.requestAccessToken({ prompt: "consent" });
+    }
+
+    /**
+     * Mengambil profil email & nama guru yang login
+     */
+    async function fetchUserProfile(token) {
+      try {
+        const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const profile = await res.json();
+          APP_STATE.userProfile = profile;
+          sessionStorage.setItem("sitabung_profile", JSON.stringify(profile));
+        }
+      } catch (e) {
+        console.warn("Gagal memuat info profil:", e);
+      }
+    }
+
+    /**
+     * Menampilkan halaman dashboard setelah login berhasil
+     */
+    function showDashboardUI() {
+      document.getElementById("login-screen").classList.add("hidden");
+      document.getElementById("app-screen").classList.remove("hidden");
+
+      if (APP_STATE.userProfile && APP_STATE.userProfile.email) {
+        document.getElementById("user-email-label").textContent =
+          `${APP_STATE.userProfile.name || "Guru"} (${APP_STATE.userProfile.email})`;
+      }
+    }
+
+    /**
+     * Logout & bersihkan sesi
+     */
+    function handleLogout() {
+      Swal.fire({
+        title: "Keluar dari Aplikasi?",
+        text: "Data Anda tetap tersimpan aman di Google Drive Anda.",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Ya, Logout",
+        cancelButtonText: "Batal"
+      }).then((result) => {
+        if (result.isConfirmed) {
+          if (APP_STATE.accessToken && window.google) {
+            google.accounts.oauth2.revoke(APP_STATE.accessToken, () => {});
+          }
+          sessionStorage.clear();
+          window.location.reload();
+        }
+      });
+    }
+
+    /**
+     * Fungsi Utama Pemanggil Backend GAS (Bebas CORS dengan text/plain)
+     */
+    async function callGasApi(action, payload = {}, loadingText = "Memproses data ke Google Drive Anda...") {
+      Swal.fire({
+        title: "Mohon Tunggu",
+        text: loadingText,
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      try {
+        const response = await fetch(CONFIG.GAS_WEB_APP_URL, {
+          method: "POST",
+          headers: {
+            // PENTING: Gunakan text/plain agar browser tidak mengirim OPTIONS preflight yang menyebabkan error CORS di GAS
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify({
+            action: action,
+            accessToken: APP_STATE.accessToken,
+            spreadsheetId: APP_STATE.spreadsheetId,
+            payload: payload
+          })
+        });
+
+        const resJson = await response.json();
+        Swal.close();
+
+        if (resJson.status !== "success") {
+          throw new Error(resJson.message || "Terjadi kesalahan pada server GAS.");
+        }
+
+        // Simpan Spreadsheet ID agar request berikutnya lebih cepat
+        if (resJson.spreadsheetId) {
+          APP_STATE.spreadsheetId = resJson.spreadsheetId;
+          sessionStorage.setItem("sitabung_sheet_id", resJson.spreadsheetId);
+          document.getElementById("btn-open-sheet").href = resJson.spreadsheetUrl;
+        }
+
+        return resJson.data;
+
+      } catch (err) {
+        Swal.fire({
+          icon: "error",
+          title: "Gagal Memproses",
+          text: err.message
+        });
+        throw err;
+      }
+    }
+
+    /**
+     * Sinkronisasi & Deteksi Otomatis Database di Drive Pengguna
+     */
+    async function syncDatabase(showToast = false) {
+      try {
+        const data = await callGasApi(
+          "INIT_DB",
+          {},
+          "Mendeteksi / Menyiapkan file Database Spreadsheet di Google Drive Anda..."
+        );
+        updateAppStateAndRender(data);
+
+        if (showToast) {
+          Swal.fire({
+            toast: true,
+            position: "top-end",
+            icon: "success",
+            title: "Database Drive berhasil disinkronkan!",
+            showConfirmButton: false,
+            timer: 2500
+          });
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    /**
+     * Update State & Render Seluruh Komponen UI
+     */
+    function updateAppStateAndRender(data) {
+      APP_STATE.rekapGlobal = data.rekapGlobal || {};
+      APP_STATE.siswaList = data.siswaList || [];
+      APP_STATE.transaksiList = data.transaksiList || [];
+
+      // 1. Render Kartu Statistik Global
+      document.getElementById("stat-total-saldo").textContent = formatRupiah(APP_STATE.rekapGlobal.totalSaldo || 0);
+      document.getElementById("stat-total-setor").textContent = formatRupiah(APP_STATE.rekapGlobal.totalSetor || 0);
+      document.getElementById("stat-total-tarik").textContent = formatRupiah(APP_STATE.rekapGlobal.totalTarik || 0);
+      document.getElementById("stat-total-siswa").textContent = `${APP_STATE.rekapGlobal.totalSiswa || 0} Siswa`;
+
+      // 2. Render Dropdown Pilihan Siswa
+      const selectSiswa = document.getElementById("trx-siswa");
+      const currentVal = selectSiswa.value;
+      selectSiswa.innerHTML = `<option value="">-- Pilih Nama Siswa --</option>`;
+      APP_STATE.siswaList.forEach(s => {
+        selectSiswa.innerHTML += `<option value="${s.idSiswa}">${s.nama} (${s.kelas}) — Saldo: ${formatRupiah(s.saldo)}</option>`;
+      });
+      selectSiswa.value = currentVal;
+      updateSelectedSiswaSaldoInfo();
+
+      // 3. Render Semua Tabel
+      renderTransaksiTable();
+      renderRekapAnakTable();
+      renderDaftarSiswaTable();
+    }
+
+    function updateSelectedSiswaSaldoInfo() {
+      const idSiswa = document.getElementById("trx-siswa").value;
+      const infoEl = document.getElementById("info-saldo-siswa");
+      const siswa = APP_STATE.siswaList.find(s => s.idSiswa === idSiswa);
+      if (siswa) {
+        infoEl.innerHTML = `<i class="fa-solid fa-circle-info"></i> Saldo Tersedia <b>${siswa.nama}</b>: ${formatRupiah(siswa.saldo)}`;
+      } else {
+        infoEl.innerHTML = "";
+      }
+    }
+
+    /**
+     * Tambah Siswa Baru
+     */
+    async function submitSiswaBaru(e) {
+      e.preventDefault();
+      const nis = document.getElementById("siswa-nis").value.trim();
+      const nama = document.getElementById("siswa-nama").value.trim();
+      const kelas = document.getElementById("siswa-kelas").value.trim();
+
+      const data = await callGasApi("ADD_SISWA", { nis, nama, kelas }, "Menyimpan data siswa baru...");
+      updateAppStateAndRender(data);
+      document.getElementById("form-siswa").reset();
+
+      Swal.fire({
+        icon: "success",
+        title: "Siswa Ditambahkan!",
+        text: `${nama} (${kelas}) berhasil didaftarkan ke database.`
+      });
+    }
+
+    /**
+     * Tambah Transaksi Setoran / Penarikan Baru
+     */
+    async function submitTransaksi(e) {
+      e.preventDefault();
+      const idSiswa = document.getElementById("trx-siswa").value;
+      const jenis = document.getElementById("trx-jenis").value;
+      const nominal = Number(document.getElementById("trx-nominal").value);
+      const tanggal = document.getElementById("trx-tanggal").value;
+      const keterangan = document.getElementById("trx-keterangan").value.trim();
+
+      const data = await callGasApi("ADD_TRANSAKSI", {
+        idSiswa, jenis, nominal, tanggal, keterangan
+      }, "Mencatat transaksi ke Spreadsheet...");
+
+      updateAppStateAndRender(data);
+      document.getElementById("trx-nominal").value = "";
+      document.getElementById("trx-keterangan").value = "";
+
+      const lastTrx = data.lastTransaction;
+      Swal.fire({
+        icon: "success",
+        title: `${jenis === "SETOR" ? "Setoran" : "Penarikan"} Berhasil!`,
+        html: `
+          <div style="text-align:left; font-size:0.92rem; line-height:1.7;">
+            <b>Siswa:</b> ${lastTrx.namaSiswa} (${lastTrx.kelas})<br>
+            <b>Nominal:</b> ${formatRupiah(lastTrx.nominal)}<br>
+            <b>Saldo Akhir:</b> ${formatRupiah(lastTrx.saldoAkhir)}
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: '<i class="fa-solid fa-print"></i> Cetak Bukti Transaksi',
+        cancelButtonText: "Tutup"
+      }).then((res) => {
+        if (res.isConfirmed) {
+          cetakBuktiSingleTransaksi(lastTrx);
+        }
+      });
+    }
+
+    /**
+     * Hapus Transaksi
+     */
+    function hapusTransaksi(idTrx, namaSiswa, nominal) {
+      Swal.fire({
+        icon: "warning",
+        title: "Hapus Transaksi Ini?",
+        html: `Transaksi <b>${idTrx}</b> milik <b>${namaSiswa}</b> (${formatRupiah(nominal)}) akan dihapus dan saldo dihitung ulang.`,
+        showCancelButton: true,
+        confirmButtonColor: "#ef4444",
+        confirmButtonText: "Ya, Hapus",
+        cancelButtonText: "Batal"
+      }).then(async (res) => {
+        if (res.isConfirmed) {
+          const data = await callGasApi("DELETE_TRANSAKSI", { idTrx }, "Menghapus transaksi...");
+          updateAppStateAndRender(data);
+          Swal.fire("Terhapus!", "Data transaksi berhasil dihapus.", "success");
+        }
+      });
+    }
+
+    /**
+     * Render Tabel Riwayat Transaksi
+     */
+    function renderTransaksiTable() {
+      const tbody = document.getElementById("tbody-transaksi");
+      const keyword = (document.getElementById("search-trx").value || "").toLowerCase();
+
+      const filtered = APP_STATE.transaksiList.filter(t =>
+        t.namaSiswa.toLowerCase().includes(keyword) ||
+        t.idTrx.toLowerCase().includes(keyword) ||
+        t.keterangan.toLowerCase().includes(keyword)
+      );
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">Belum ada transaksi.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.slice(0, 50).map(t => `
+        <tr>
+          <td>
+            <div style="font-size:0.85rem;">${t.tanggal}</div>
+            <small style="color:var(--text-secondary); font-size:0.72rem;">${t.idTrx}</small>
+          </td>
+          <td>
+            <div>${t.namaSiswa}</div>
+            <small style="color:var(--text-secondary);">${t.kelas}</small>
+          </td>
+          <td>
+            <span class="badge ${t.jenis === 'SETOR' ? 'badge-setor' : 'badge-tarik'}">
+              ${t.jenis === 'SETOR' ? 'SETOR' : 'TARIK'}
+            </span>
+          </td>
+          <td style="color:${t.jenis === 'SETOR' ? 'var(--success)' : 'var(--danger)'}; font-weight:800;">
+            ${t.jenis === 'SETOR' ? '+' : '-'} ${formatRupiah(t.nominal)}
+          </td>
+          <td>
+            <div style="display:flex; gap:8px;">
+              <button class="neu-btn" style="padding:8px 12px;" title="Cetak Kwitansi" onclick='cetakBuktiSingleTransaksi(${JSON.stringify(t)})'>
+                <i class="fa-solid fa-print"></i>
+              </button>
+              <button class="neu-btn" style="padding:8px 12px; color:var(--danger);" title="Hapus" onclick="hapusTransaksi('${t.idTrx}', '${t.namaSiswa}', ${t.nominal})">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    /**
+     * Render Tabel Rekap Saldo Per Anak
+     */
+    function renderRekapAnakTable() {
+      const tbody = document.getElementById("tbody-rekap-anak");
+      const keyword = (document.getElementById("search-rekap").value || "").toLowerCase();
+
+      const filtered = APP_STATE.siswaList.filter(s =>
+        s.nama.toLowerCase().includes(keyword) ||
+        s.nis.toLowerCase().includes(keyword) ||
+        s.kelas.toLowerCase().includes(keyword)
+      );
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-secondary);">Belum ada data siswa. Tambahkan siswa di tab Kelola Data Siswa.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(s => `
+        <tr>
+          <td>${s.nis}</td>
+          <td><strong>${s.nama}</strong></td>
+          <td>${s.kelas}</td>
+          <td style="color:var(--success);">${formatRupiah(s.totalSetor)}</td>
+          <td style="color:var(--danger);">${formatRupiah(s.totalTarik)}</td>
+          <td style="font-weight:800; color:var(--accent-primary);">${formatRupiah(s.saldo)}</td>
+          <td>
+            <button class="neu-btn" style="padding:8px 14px; font-size:0.82rem;" onclick="lihatDetailDanCetakAnak('${s.idSiswa}')">
+              <i class="fa-solid fa-book-open"></i> Detail & Cetak
+            </button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    /**
+     * Render Tabel Daftar Siswa
+     */
+    function renderDaftarSiswaTable() {
+      const tbody = document.getElementById("tbody-daftar-siswa");
+      if (APP_STATE.siswaList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-secondary);">Belum ada siswa terdaftar.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = APP_STATE.siswaList.map(s => `
+        <tr>
+          <td><small>${s.idSiswa}</small></td>
+          <td>${s.nis}</td>
+          <td>${s.nama}</td>
+          <td>${s.kelas}</td>
+        </tr>
+      `).join("");
+    }
+
+    /**
+     * Modal Detail Mutasi Per Anak + Cetak Rekap Buku Tabungan Anak
+     */
+    function lihatDetailDanCetakAnak(idSiswa) {
+      const siswa = APP_STATE.siswaList.find(s => s.idSiswa === idSiswa);
+      if (!siswa) return;
+
+      const mutasi = APP_STATE.transaksiList.filter(t => t.idSiswa === idSiswa);
+
+      const rowsHtml = mutasi.length === 0
+        ? `<tr><td colspan="4" style="text-align:center; padding:10px;">Belum ada riwayat transaksi</td></tr>`
+        : mutasi.map(m => `
+            <tr style="border-bottom:1px solid #ddd;">
+              <td style="padding:6px;">${m.tanggal}</td>
+              <td style="padding:6px;">${m.jenis}</td>
+              <td style="padding:6px;">${formatRupiah(m.nominal)}</td>
+              <td style="padding:6px;">${m.keterangan}</td>
+            </tr>
+          `).join("");
+
+      Swal.fire({
+        title: `Buku Tabungan: ${siswa.nama}`,
+        width: 680,
+        html: `
+          <div style="text-align:left; font-size:0.9rem; margin-bottom:14px;">
+            <b>NIS:</b> ${siswa.nis} | <b>Kelas:</b> ${siswa.kelas}<br>
+            <b>Total Setoran:</b> ${formatRupiah(siswa.totalSetor)} |
+            <b>Total Penarikan:</b> ${formatRupiah(siswa.totalTarik)}<br>
+            <span style="font-size:1.1rem; color:#2563eb;"><b>Saldo Saat Ini: ${formatRupiah(siswa.saldo)}</b></span>
+          </div>
+          <div style="max-height:260px; overflow-y:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.84rem; text-align:left;">
+              <thead>
+                <tr style="background:#f1f5f9;">
+                  <th style="padding:8px;">Tanggal</th>
+                  <th style="padding:8px;">Jenis</th>
+                  <th style="padding:8px;">Nominal</th>
+                  <th style="padding:8px;">Keterangan</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: '<i class="fa-solid fa-print"></i> Cetak Rekap Anak',
+        cancelButtonText: "Tutup"
+      }).then((res) => {
+        if (res.isConfirmed) {
+          cetakRekapPerAnak(siswa, mutasi);
+        }
+      });
+    }
+
+    /**
+     * ========================================================================
+     * ENGINE CETAK BUKTI TRANSAKSI & BUKU TABUNGAN
+     * ========================================================================
+     */
+    function cetakBuktiSingleTransaksi(trx) {
+      const siswa = APP_STATE.siswaList.find(s => s.idSiswa === trx.idSiswa);
+      const saldoTerkini = trx.saldoAkhir !== undefined ? trx.saldoAkhir : (siswa ? siswa.saldo : 0);
+      const namaGuru = (APP_STATE.userProfile && APP_STATE.userProfile.name) ? APP_STATE.userProfile.name : "Guru Kelas";
+
+      const printArea = document.getElementById("print-area");
+      printArea.innerHTML = `
+        <div style="max-width:420px; margin:0 auto; border:2px dashed #333; padding:20px; font-family:monospace;">
+          <h2 style="text-align:center; margin-bottom:4px;">BUKTI TRANSAKSI TABUNGAN SISWA</h2>
+          <p style="text-align:center; font-size:12px; margin-bottom:16px;">SiTabung Kelas — Dicetak Otomatis</p>
+          <hr style="margin-bottom:12px;">
+          <table style="width:100%; border-spacing:0; font-size:13px;">
+            <tr><td style="padding:4px 0; box-shadow:none;">ID Transaksi</td><td style="padding:4px 0; box-shadow:none;">: ${trx.idTrx}</td></tr>
+            <tr><td style="padding:4px 0; box-shadow:none;">Tanggal</td><td style="padding:4px 0; box-shadow:none;">: ${trx.tanggal}</td></tr>
+            <tr><td style="padding:4px 0; box-shadow:none;">Nama Siswa</td><td style="padding:4px 0; box-shadow:none;">: <b>${trx.namaSiswa}</b></td></tr>
+            <tr><td style="padding:4px 0; box-shadow:none;">Kelas</td><td style="padding:4px 0; box-shadow:none;">: ${trx.kelas}</td></tr>
+            <tr><td style="padding:4px 0; box-shadow:none;">Jenis</td><td style="padding:4px 0; box-shadow:none;">: <b>${trx.jenis}</b></td></tr>
+            <tr><td style="padding:4px 0; box-shadow:none;">Nominal</td><td style="padding:4px 0; box-shadow:none;">: <b>${formatRupiah(trx.nominal)}</b></td></tr>
+            <tr><td style="padding:4px 0; box-shadow:none;">Keterangan</td><td style="padding:4px 0; box-shadow:none;">: ${trx.keterangan || "-"}</td></tr>
+            <tr><td style="padding:4px 0; box-shadow:none;">Saldo Akhir</td><td style="padding:4px 0; box-shadow:none;">: <b>${formatRupiah(saldoTerkini)}</b></td></tr>
+          </table>
+          <hr style="margin:14px 0;">
+          <div style="display:flex; justify-content:space-between; margin-top:24px; font-size:12px; text-align:center;">
+            <div>Orang Tua / Siswa<br><br><br>( .................... )</div>
+            <div>Guru Kelas<br><br><br>( ${namaGuru} )</div>
+          </div>
+        </div>
+      `;
+      window.print();
+    }
+
+    function cetakRekapPerAnak(siswa, mutasi) {
+      const namaGuru = (APP_STATE.userProfile && APP_STATE.userProfile.name) ? APP_STATE.userProfile.name : "Guru Kelas";
+      const rows = mutasi.map((m, i) => `
+        <tr>
+          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${i + 1}</td>
+          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${m.tanggal}</td>
+          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${m.idTrx}</td>
+          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${m.jenis}</td>
+          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${formatRupiah(m.nominal)}</td>
+          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${m.keterangan}</td>
+        </tr>
+      `).join("");
+
+      const printArea = document.getElementById("print-area");
+      printArea.innerHTML = `
+        <div style="padding:20px; font-family:sans-serif;">
+          <h2 style="text-align:center;">LAPORAN REKAPITULASI TABUNGAN SISWA</h2>
+          <p style="text-align:center; margin-bottom:20px;">Tanggal Cetak: ${new Date().toLocaleDateString("id-ID")}</p>
+          <p>
+            <b>Nama Siswa:</b> ${siswa.nama} (${siswa.nis})<br>
+            <b>Kelas:</b> ${siswa.kelas}<br>
+            <b>Total Setoran:</b> ${formatRupiah(siswa.totalSetor)} |
+            <b>Total Penarikan:</b> ${formatRupiah(siswa.totalTarik)} |
+            <b>Saldo Akhir:</b> <strong>${formatRupiah(siswa.saldo)}</strong>
+          </p>
+          <table style="width:100%; border-collapse:collapse; margin-top:16px;">
+            <thead>
+              <tr>
+                <th style="border:1px solid #333; padding:8px;">No</th>
+                <th style="border:1px solid #333; padding:8px;">Tanggal</th>
+                <th style="border:1px solid #333; padding:8px;">ID Transaksi</th>
+                <th style="border:1px solid #333; padding:8px;">Jenis</th>
+                <th style="border:1px solid #333; padding:8px;">Nominal</th>
+                <th style="border:1px solid #333; padding:8px;">Keterangan</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div style="margin-top:40px; text-align:right;">
+            Mengetahui, Guru Kelas<br><br><br><br>
+            <b>${namaGuru}</b>
+          </div>
+        </div>
+      `;
+      window.print();
+    }
+
+    /**
+     * Navigasi Antar Tab
+     */
+    function switchTab(tabId, btnEl) {
+      document.querySelectorAll(".tab-pane").forEach(el => el.classList.add("hidden"));
+      document.getElementById(tabId).classList.remove("hidden");
+
+      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+      btnEl.classList.add("active");
+    }
+
+    /**
+     * Helper Format Rupiah
+     */
+    function formatRupiah(angka) {
+      return "Rp " + Number(angka || 0).toLocaleString("id-ID");
+    }
+  </script>
+</body>
+</html>
