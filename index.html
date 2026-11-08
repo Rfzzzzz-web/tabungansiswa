@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SiTabung — Aplikasi Tabungan Siswa (User-Centric Cloud)</title>
 
+  <!-- Inline SVG Favicon agar tidak muncul error 404 favicon.ico di Console -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐷</text></svg>" />
+
   <!-- Google Fonts: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -403,6 +406,7 @@
         visibility: visible;
       }
       #print-area {
+        display: block !important;
         position: absolute;
         left: 0;
         top: 0;
@@ -435,8 +439,12 @@
         <span class="pill"><i class="fa-solid fa-print"></i> Cetak Bukti</span>
       </div>
 
-      <button id="btn-google-login" class="neu-btn primary" style="width: 100%; padding: 15px; font-size: 1rem;" onclick="handleGoogleLogin()">
+      <button id="btn-google-login" class="neu-btn primary" style="width: 100%; padding: 15px; font-size: 1rem;" onclick="handleGoogleLogin(false)">
         <i class="fa-brands fa-google"></i> Login dengan Akun Google Guru
+      </button>
+
+      <button class="neu-btn" style="width: 100%; margin-top: 12px; padding: 10px; font-size: 0.82rem; color: var(--text-secondary);" onclick="handleGoogleLogin(true)">
+        <i class="fa-solid fa-user-gear"></i> Gunakan / Ganti Akun Google Lain
       </button>
 
       <div style="margin-top: 22px; font-size: 0.78rem; color: var(--text-secondary);">
@@ -712,61 +720,69 @@
        ======================================================================== -->
   <script>
     /**
-     * KONFIGURASI PENTING (WAJIB DIGANTI SESUAI PANDUAN DI BAWAH)
+     * KONFIGURASI TERINTEGRASI (SUDAH DISESUAIKAN DENGAN AKUN ANDA)
      */
     const CONFIG = {
-      // 1. Ganti dengan OAuth 2.0 Client ID dari Google Cloud Console
+      // 1. OAuth 2.0 Client ID dari Google Cloud Console
       GOOGLE_CLIENT_ID: "829813587866-ihk11kcuiuvl0tt92232kd390u9rlvjm.apps.googleusercontent.com",
 
-      // 2. Ganti dengan URL Web App dari Deployment Google Apps Script (berakhiran /exec)
+      // 2. URL Web App dari Deployment Google Apps Script
       GAS_WEB_APP_URL: "https://script.google.com/macros/s/AKfycbyGl-wRyO7qeYcMJ240RWhsWXlQX3uHWDAsq-_Cdwx2xvBy_ErA28r7r74iQub6qBA/exec",
 
       // Scope untuk membuat & mengelola file database di Google Drive milik user yang login
       SCOPES: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets openid email profile"
     };
 
-    // State Aplikasi
+    // State Aplikasi (Menggunakan localStorage agar sesi awet meskipun tab browser ditutup)
     let tokenClient;
     let APP_STATE = {
-      accessToken: sessionStorage.getItem("sitabung_token") || null,
-      spreadsheetId: sessionStorage.getItem("sitabung_sheet_id") || null,
-      userProfile: JSON.parse(sessionStorage.getItem("sitabung_profile") || "null"),
+      accessToken: localStorage.getItem("sitabung_token") || null,
+      tokenExpiry: Number(localStorage.getItem("sitabung_token_expiry") || 0),
+      spreadsheetId: localStorage.getItem("sitabung_sheet_id") || null,
+      userProfile: JSON.parse(localStorage.getItem("sitabung_profile") || "null"),
       rekapGlobal: {},
       siswaList: [],
       transaksiList: []
     };
 
-    // Set default tanggal hari ini
+    // Set default tanggal hari ini & Cek sesi otomatis
     window.addEventListener("DOMContentLoaded", () => {
       document.getElementById("trx-tanggal").valueAsDate = new Date();
 
-      // Cek apakah masih ada sesi login aktif
-      if (APP_STATE.accessToken) {
+      if (APP_STATE.spreadsheetId) {
+        document.getElementById("btn-open-sheet").href =
+          "https://docs.google.com/spreadsheets/d/" + APP_STATE.spreadsheetId;
+      }
+
+      // Cek apakah masih ada sesi login aktif dan belum kadaluarsa
+      if (APP_STATE.accessToken && Date.now() < APP_STATE.tokenExpiry) {
         showDashboardUI();
         syncDatabase(false);
+      } else if (APP_STATE.accessToken) {
+        // Jika token sudah lewat masa aktif (~1 jam), bersihkan token lama tanpa mencabut izin
+        clearLocalSession();
       }
     });
 
     /**
-     * Inisialisasi Google Identity Services (GIS) & Proses Login
+     * Inisialisasi Google Identity Services (GIS) & Proses Login Tanpa Verifikasi Ulang
+     * @param {boolean} forceSelectAccount - Jika true, tampilkan pilihan akun Google
      */
-    function handleGoogleLogin() {
-      if (CONFIG.GOOGLE_CLIENT_ID.includes("GANTI_DENGAN")) {
-        Swal.fire({
-          icon: "warning",
-          title: "Konfigurasi Belum Diisi",
-          html: "Silakan masukkan <b>GOOGLE_CLIENT_ID</b> dan <b>GAS_WEB_APP_URL</b> pada bagian <code>CONFIG</code> di dalam file <code>index.html</code>."
-        });
-        return;
-      }
-
+    function handleGoogleLogin(forceSelectAccount = false) {
       tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CONFIG.GOOGLE_CLIENT_ID,
         scope: CONFIG.SCOPES,
         callback: async (tokenResponse) => {
           if (tokenResponse && tokenResponse.access_token) {
+            // Simpan token beserta waktu kadaluarsa (default ~3500 detik / hampir 1 jam)
+            const expiresInMs = (Number(tokenResponse.expires_in) || 3500) * 1000;
+            const expiryTime = Date.now() + expiresInMs;
+
             APP_STATE.accessToken = tokenResponse.access_token;
-            sessionStorage.setItem("sitabung_token", tokenResponse.access_token);
+            APP_STATE.tokenExpiry = expiryTime;
+
+            localStorage.setItem("sitabung_token", tokenResponse.access_token);
+            localStorage.setItem("sitabung_token_expiry", String(expiryTime));
 
             await fetchUserProfile(tokenResponse.access_token);
             showDashboardUI();
@@ -775,7 +791,17 @@
         }
       });
 
-      tokenClient.requestAccessToken({ prompt: "consent" });
+      // Gunakan prompt: "" agar tidak memunculkan layar verifikasi/consent berulang kali!
+      const loginOptions = {
+        prompt: forceSelectAccount ? "select_account" : ""
+      };
+
+      // Jika sudah ada riwayat email sebelumnya dan tidak minta ganti akun, gunakan hint otomatis
+      if (!forceSelectAccount && APP_STATE.userProfile && APP_STATE.userProfile.email) {
+        loginOptions.hint = APP_STATE.userProfile.email;
+      }
+
+      tokenClient.requestAccessToken(loginOptions);
     }
 
     /**
@@ -788,12 +814,27 @@
         });
         if (res.ok) {
           const profile = await res.json();
+          // Jika ganti akun email berbeda, reset spreadsheetId lokal agar mencari di Drive akun baru
+          if (APP_STATE.userProfile && APP_STATE.userProfile.email !== profile.email) {
+            APP_STATE.spreadsheetId = null;
+            localStorage.removeItem("sitabung_sheet_id");
+          }
           APP_STATE.userProfile = profile;
-          sessionStorage.setItem("sitabung_profile", JSON.stringify(profile));
+          localStorage.setItem("sitabung_profile", JSON.stringify(profile));
         }
       } catch (e) {
         console.warn("Gagal memuat info profil:", e);
       }
+    }
+
+    /**
+     * Bersihkan token sesi lokal tanpa menghapus email hint atau mencabut OAuth Grant
+     */
+    function clearLocalSession() {
+      APP_STATE.accessToken = null;
+      APP_STATE.tokenExpiry = 0;
+      localStorage.removeItem("sitabung_token");
+      localStorage.removeItem("sitabung_token_expiry");
     }
 
     /**
@@ -810,7 +851,7 @@
     }
 
     /**
-     * Logout & bersihkan sesi
+     * Logout & bersihkan sesi (TANPA mencabut izin/revoke agar login berikutnya tidak perlu verifikasi lagi)
      */
     function handleLogout() {
       Swal.fire({
@@ -822,10 +863,7 @@
         cancelButtonText: "Batal"
       }).then((result) => {
         if (result.isConfirmed) {
-          if (APP_STATE.accessToken && window.google) {
-            google.accounts.oauth2.revoke(APP_STATE.accessToken, () => {});
-          }
-          sessionStorage.clear();
+          clearLocalSession();
           window.location.reload();
         }
       });
@@ -861,24 +899,36 @@
         Swal.close();
 
         if (resJson.status !== "success") {
+          // Jika token kadaluarsa di tengah jalan (401), arahkan untuk refresh login tanpa consent
+          if (String(resJson.message).includes("401") || String(resJson.message).toLowerCase().includes("unauthenticated")) {
+            clearLocalSession();
+            Swal.fire({
+              icon: "info",
+              title: "Sesi Berakhir",
+              text: "Sesi keamanan Google Anda telah habis. Silakan klik Login kembali (tanpa verifikasi ulang)."
+            }).then(() => window.location.reload());
+            throw new Error("Sesi berakhir");
+          }
           throw new Error(resJson.message || "Terjadi kesalahan pada server GAS.");
         }
 
         // Simpan Spreadsheet ID agar request berikutnya lebih cepat
         if (resJson.spreadsheetId) {
           APP_STATE.spreadsheetId = resJson.spreadsheetId;
-          sessionStorage.setItem("sitabung_sheet_id", resJson.spreadsheetId);
+          localStorage.setItem("sitabung_sheet_id", resJson.spreadsheetId);
           document.getElementById("btn-open-sheet").href = resJson.spreadsheetUrl;
         }
 
         return resJson.data;
 
       } catch (err) {
-        Swal.fire({
-          icon: "error",
-          title: "Gagal Memproses",
-          text: err.message
-        });
+        if (err.message !== "Sesi berakhir") {
+          Swal.fire({
+            icon: "error",
+            title: "Gagal Memproses",
+            text: err.message
+          });
+        }
         throw err;
       }
     }
@@ -929,7 +979,7 @@
       const currentVal = selectSiswa.value;
       selectSiswa.innerHTML = `<option value="">-- Pilih Nama Siswa --</option>`;
       APP_STATE.siswaList.forEach(s => {
-        selectSiswa.innerHTML += `<option value="${s.idSiswa}">${s.nama} (${s.kelas}) — Saldo: ${formatRupiah(s.saldo)}</option>`;
+        selectSiswa.innerHTML += `<option value="${s.idSiswa}">${escapeHtml(s.nama)} (${escapeHtml(s.kelas)}) — Saldo: ${formatRupiah(s.saldo)}</option>`;
       });
       selectSiswa.value = currentVal;
       updateSelectedSiswaSaldoInfo();
@@ -945,7 +995,7 @@
       const infoEl = document.getElementById("info-saldo-siswa");
       const siswa = APP_STATE.siswaList.find(s => s.idSiswa === idSiswa);
       if (siswa) {
-        infoEl.innerHTML = `<i class="fa-solid fa-circle-info"></i> Saldo Tersedia <b>${siswa.nama}</b>: ${formatRupiah(siswa.saldo)}`;
+        infoEl.innerHTML = `<i class="fa-solid fa-circle-info"></i> Saldo Tersedia <b>${escapeHtml(siswa.nama)}</b>: ${formatRupiah(siswa.saldo)}`;
       } else {
         infoEl.innerHTML = "";
       }
@@ -996,7 +1046,7 @@
         title: `${jenis === "SETOR" ? "Setoran" : "Penarikan"} Berhasil!`,
         html: `
           <div style="text-align:left; font-size:0.92rem; line-height:1.7;">
-            <b>Siswa:</b> ${lastTrx.namaSiswa} (${lastTrx.kelas})<br>
+            <b>Siswa:</b> ${escapeHtml(lastTrx.namaSiswa)} (${escapeHtml(lastTrx.kelas)})<br>
             <b>Nominal:</b> ${formatRupiah(lastTrx.nominal)}<br>
             <b>Saldo Akhir:</b> ${formatRupiah(lastTrx.saldoAkhir)}
           </div>
@@ -1014,11 +1064,14 @@
     /**
      * Hapus Transaksi
      */
-    function hapusTransaksi(idTrx, namaSiswa, nominal) {
+    function hapusTransaksi(idTrx) {
+      const trx = APP_STATE.transaksiList.find(t => t.idTrx === idTrx);
+      if (!trx) return;
+
       Swal.fire({
         icon: "warning",
         title: "Hapus Transaksi Ini?",
-        html: `Transaksi <b>${idTrx}</b> milik <b>${namaSiswa}</b> (${formatRupiah(nominal)}) akan dihapus dan saldo dihitung ulang.`,
+        html: `Transaksi <b>${escapeHtml(trx.idTrx)}</b> milik <b>${escapeHtml(trx.namaSiswa)}</b> (${formatRupiah(trx.nominal)}) akan dihapus dan saldo dihitung ulang.`,
         showCancelButton: true,
         confirmButtonColor: "#ef4444",
         confirmButtonText: "Ya, Hapus",
@@ -1030,6 +1083,16 @@
           Swal.fire("Terhapus!", "Data transaksi berhasil dihapus.", "success");
         }
       });
+    }
+
+    /**
+     * Cetak transaksi berdasarkan ID dari tabel riwayat
+     */
+    function cetakBuktiById(idTrx) {
+      const trx = APP_STATE.transaksiList.find(t => t.idTrx === idTrx);
+      if (trx) {
+        cetakBuktiSingleTransaksi(trx);
+      }
     }
 
     /**
@@ -1053,12 +1116,12 @@
       tbody.innerHTML = filtered.slice(0, 50).map(t => `
         <tr>
           <td>
-            <div style="font-size:0.85rem;">${t.tanggal}</div>
-            <small style="color:var(--text-secondary); font-size:0.72rem;">${t.idTrx}</small>
+            <div style="font-size:0.85rem;">${escapeHtml(t.tanggal)}</div>
+            <small style="color:var(--text-secondary); font-size:0.72rem;">${escapeHtml(t.idTrx)}</small>
           </td>
           <td>
-            <div>${t.namaSiswa}</div>
-            <small style="color:var(--text-secondary);">${t.kelas}</small>
+            <div>${escapeHtml(t.namaSiswa)}</div>
+            <small style="color:var(--text-secondary);">${escapeHtml(t.kelas)}</small>
           </td>
           <td>
             <span class="badge ${t.jenis === 'SETOR' ? 'badge-setor' : 'badge-tarik'}">
@@ -1070,10 +1133,10 @@
           </td>
           <td>
             <div style="display:flex; gap:8px;">
-              <button class="neu-btn" style="padding:8px 12px;" title="Cetak Kwitansi" onclick='cetakBuktiSingleTransaksi(${JSON.stringify(t)})'>
+              <button class="neu-btn" style="padding:8px 12px;" title="Cetak Kwitansi" onclick="cetakBuktiById('${escapeHtml(t.idTrx)}')">
                 <i class="fa-solid fa-print"></i>
               </button>
-              <button class="neu-btn" style="padding:8px 12px; color:var(--danger);" title="Hapus" onclick="hapusTransaksi('${t.idTrx}', '${t.namaSiswa}', ${t.nominal})">
+              <button class="neu-btn" style="padding:8px 12px; color:var(--danger);" title="Hapus" onclick="hapusTransaksi('${escapeHtml(t.idTrx)}')">
                 <i class="fa-solid fa-trash"></i>
               </button>
             </div>
@@ -1102,14 +1165,14 @@
 
       tbody.innerHTML = filtered.map(s => `
         <tr>
-          <td>${s.nis}</td>
-          <td><strong>${s.nama}</strong></td>
-          <td>${s.kelas}</td>
+          <td>${escapeHtml(s.nis)}</td>
+          <td><strong>${escapeHtml(s.nama)}</strong></td>
+          <td>${escapeHtml(s.kelas)}</td>
           <td style="color:var(--success);">${formatRupiah(s.totalSetor)}</td>
           <td style="color:var(--danger);">${formatRupiah(s.totalTarik)}</td>
           <td style="font-weight:800; color:var(--accent-primary);">${formatRupiah(s.saldo)}</td>
           <td>
-            <button class="neu-btn" style="padding:8px 14px; font-size:0.82rem;" onclick="lihatDetailDanCetakAnak('${s.idSiswa}')">
+            <button class="neu-btn" style="padding:8px 14px; font-size:0.82rem;" onclick="lihatDetailDanCetakAnak('${escapeHtml(s.idSiswa)}')">
               <i class="fa-solid fa-book-open"></i> Detail & Cetak
             </button>
           </td>
@@ -1129,10 +1192,10 @@
 
       tbody.innerHTML = APP_STATE.siswaList.map(s => `
         <tr>
-          <td><small>${s.idSiswa}</small></td>
-          <td>${s.nis}</td>
-          <td>${s.nama}</td>
-          <td>${s.kelas}</td>
+          <td><small>${escapeHtml(s.idSiswa)}</small></td>
+          <td>${escapeHtml(s.nis)}</td>
+          <td>${escapeHtml(s.nama)}</td>
+          <td>${escapeHtml(s.kelas)}</td>
         </tr>
       `).join("");
     }
@@ -1150,19 +1213,19 @@
         ? `<tr><td colspan="4" style="text-align:center; padding:10px;">Belum ada riwayat transaksi</td></tr>`
         : mutasi.map(m => `
             <tr style="border-bottom:1px solid #ddd;">
-              <td style="padding:6px;">${m.tanggal}</td>
-              <td style="padding:6px;">${m.jenis}</td>
+              <td style="padding:6px;">${escapeHtml(m.tanggal)}</td>
+              <td style="padding:6px;">${escapeHtml(m.jenis)}</td>
               <td style="padding:6px;">${formatRupiah(m.nominal)}</td>
-              <td style="padding:6px;">${m.keterangan}</td>
+              <td style="padding:6px;">${escapeHtml(m.keterangan)}</td>
             </tr>
           `).join("");
 
       Swal.fire({
-        title: `Buku Tabungan: ${siswa.nama}`,
+        title: `Buku Tabungan: ${escapeHtml(siswa.nama)}`,
         width: 680,
         html: `
           <div style="text-align:left; font-size:0.9rem; margin-bottom:14px;">
-            <b>NIS:</b> ${siswa.nis} | <b>Kelas:</b> ${siswa.kelas}<br>
+            <b>NIS:</b> ${escapeHtml(siswa.nis)} | <b>Kelas:</b> ${escapeHtml(siswa.kelas)}<br>
             <b>Total Setoran:</b> ${formatRupiah(siswa.totalSetor)} |
             <b>Total Penarikan:</b> ${formatRupiah(siswa.totalTarik)}<br>
             <span style="font-size:1.1rem; color:#2563eb;"><b>Saldo Saat Ini: ${formatRupiah(siswa.saldo)}</b></span>
@@ -1208,19 +1271,19 @@
           <p style="text-align:center; font-size:12px; margin-bottom:16px;">SiTabung Kelas — Dicetak Otomatis</p>
           <hr style="margin-bottom:12px;">
           <table style="width:100%; border-spacing:0; font-size:13px;">
-            <tr><td style="padding:4px 0; box-shadow:none;">ID Transaksi</td><td style="padding:4px 0; box-shadow:none;">: ${trx.idTrx}</td></tr>
-            <tr><td style="padding:4px 0; box-shadow:none;">Tanggal</td><td style="padding:4px 0; box-shadow:none;">: ${trx.tanggal}</td></tr>
-            <tr><td style="padding:4px 0; box-shadow:none;">Nama Siswa</td><td style="padding:4px 0; box-shadow:none;">: <b>${trx.namaSiswa}</b></td></tr>
-            <tr><td style="padding:4px 0; box-shadow:none;">Kelas</td><td style="padding:4px 0; box-shadow:none;">: ${trx.kelas}</td></tr>
-            <tr><td style="padding:4px 0; box-shadow:none;">Jenis</td><td style="padding:4px 0; box-shadow:none;">: <b>${trx.jenis}</b></td></tr>
+            <tr><td style="padding:4px 0; box-shadow:none;">ID Transaksi</td><td style="padding:4px 0; box-shadow:none;">: ${escapeHtml(trx.idTrx)}</td></tr>
+            <tr><td style="padding:4px 0; box-shadow:none;">Tanggal</td><td style="padding:4px 0; box-shadow:none;">: ${escapeHtml(trx.tanggal)}</td></tr>
+            <tr><td style="padding:4px 0; box-shadow:none;">Nama Siswa</td><td style="padding:4px 0; box-shadow:none;">: <b>${escapeHtml(trx.namaSiswa)}</b></td></tr>
+            <tr><td style="padding:4px 0; box-shadow:none;">Kelas</td><td style="padding:4px 0; box-shadow:none;">: ${escapeHtml(trx.kelas)}</td></tr>
+            <tr><td style="padding:4px 0; box-shadow:none;">Jenis</td><td style="padding:4px 0; box-shadow:none;">: <b>${escapeHtml(trx.jenis)}</b></td></tr>
             <tr><td style="padding:4px 0; box-shadow:none;">Nominal</td><td style="padding:4px 0; box-shadow:none;">: <b>${formatRupiah(trx.nominal)}</b></td></tr>
-            <tr><td style="padding:4px 0; box-shadow:none;">Keterangan</td><td style="padding:4px 0; box-shadow:none;">: ${trx.keterangan || "-"}</td></tr>
+            <tr><td style="padding:4px 0; box-shadow:none;">Keterangan</td><td style="padding:4px 0; box-shadow:none;">: ${escapeHtml(trx.keterangan || "-")}</td></tr>
             <tr><td style="padding:4px 0; box-shadow:none;">Saldo Akhir</td><td style="padding:4px 0; box-shadow:none;">: <b>${formatRupiah(saldoTerkini)}</b></td></tr>
           </table>
           <hr style="margin:14px 0;">
           <div style="display:flex; justify-content:space-between; margin-top:24px; font-size:12px; text-align:center;">
             <div>Orang Tua / Siswa<br><br><br>( .................... )</div>
-            <div>Guru Kelas<br><br><br>( ${namaGuru} )</div>
+            <div>Guru Kelas<br><br><br>( ${escapeHtml(namaGuru)} )</div>
           </div>
         </div>
       `;
@@ -1232,11 +1295,11 @@
       const rows = mutasi.map((m, i) => `
         <tr>
           <td style="border:1px solid #333; padding:6px; box-shadow:none;">${i + 1}</td>
-          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${m.tanggal}</td>
-          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${m.idTrx}</td>
-          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${m.jenis}</td>
+          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${escapeHtml(m.tanggal)}</td>
+          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${escapeHtml(m.idTrx)}</td>
+          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${escapeHtml(m.jenis)}</td>
           <td style="border:1px solid #333; padding:6px; box-shadow:none;">${formatRupiah(m.nominal)}</td>
-          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${m.keterangan}</td>
+          <td style="border:1px solid #333; padding:6px; box-shadow:none;">${escapeHtml(m.keterangan)}</td>
         </tr>
       `).join("");
 
@@ -1246,8 +1309,8 @@
           <h2 style="text-align:center;">LAPORAN REKAPITULASI TABUNGAN SISWA</h2>
           <p style="text-align:center; margin-bottom:20px;">Tanggal Cetak: ${new Date().toLocaleDateString("id-ID")}</p>
           <p>
-            <b>Nama Siswa:</b> ${siswa.nama} (${siswa.nis})<br>
-            <b>Kelas:</b> ${siswa.kelas}<br>
+            <b>Nama Siswa:</b> ${escapeHtml(siswa.nama)} (${escapeHtml(siswa.nis)})<br>
+            <b>Kelas:</b> ${escapeHtml(siswa.kelas)}<br>
             <b>Total Setoran:</b> ${formatRupiah(siswa.totalSetor)} |
             <b>Total Penarikan:</b> ${formatRupiah(siswa.totalTarik)} |
             <b>Saldo Akhir:</b> <strong>${formatRupiah(siswa.saldo)}</strong>
@@ -1267,7 +1330,7 @@
           </table>
           <div style="margin-top:40px; text-align:right;">
             Mengetahui, Guru Kelas<br><br><br><br>
-            <b>${namaGuru}</b>
+            <b>${escapeHtml(namaGuru)}</b>
           </div>
         </div>
       `;
@@ -1290,6 +1353,18 @@
      */
     function formatRupiah(angka) {
       return "Rp " + Number(angka || 0).toLocaleString("id-ID");
+    }
+
+    /**
+     * Helper Keamanan XSS / Karakter Kutip pada Nama Siswa
+     */
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
   </script>
 </body>
